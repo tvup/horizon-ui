@@ -11,7 +11,7 @@ Features at a glance:
 - **Full-text job search** across class name, queue, tags, and payload content
 - `viewHorizonUi` gate for fine-grained access control
 - Optional `horizon-ui:auto-pause` command that pauses idle supervisors automatically
-- Publishable Vue components for full frontend customization
+- Vue components shipped via npm — composes with your existing Vite + Inertia setup
 
 ## Requirements
 
@@ -22,56 +22,70 @@ Features at a glance:
 | Laravel Horizon | ^5.0 |
 | inertiajs/inertia-laravel | ^1.0 \| ^2.0 \| ^3.0 |
 | **Frontend** | |
-| Vue | ^3.0 |
+| Node.js | ≥ 18 |
+| Vue | ^3.3 |
 | Tailwind CSS | **v4** |
 | reka-ui | ^2.0 |
 | lucide-vue-next | ^0.400+ |
 
-> **Tailwind v4 only.** The bundled components use v4 utility classes. If your app runs Tailwind v3 you will need to publish and adjust the components.
+> **Tailwind v4 only.** The bundled components use v4 utility classes.
 
 ## Installation
 
+The package ships in two halves — a Composer package for the PHP backend, and an npm package for the Vue components:
+
 ```bash
 composer require negoziator/horizon-ui
+npm install @negoziator/horizon-ui
 php artisan horizon-ui:install
 ```
 
-`horizon-ui:install` publishes `config/horizon-ui.php`, copies the Vue components to `resources/js/vendor/horizon-ui/`, and prints the dashboard URL.
+`horizon-ui:install` publishes `config/horizon-ui.php` and prints the dashboard URL. There is no `vendor:publish --tag=horizon-ui-vue` step — the Vue components live in `node_modules/@negoziator/horizon-ui/` and are imported directly.
 
-### Frontend peer dependencies
+### Tailwind v4 setup
 
-The bundled Vue components require `reka-ui` and `lucide-vue-next`. Install them alongside your other frontend dependencies:
+In your Tailwind entry point (typically `resources/css/app.css`), import the package's `styles.css` so Tailwind picks up the components and declare the dark variant:
 
-```bash
-npm install reka-ui lucide-vue-next
+```css
+@import "tailwindcss";
+@import "@negoziator/horizon-ui/styles.css";
+@custom-variant dark (@media (prefers-color-scheme: dark));
+```
+
+The package's `styles.css` contains `@source` directives pointing at the bundled `.vue` files, so Tailwind v4 generates only the utilities the dashboard actually uses. If your app uses a class-based dark-mode toggle, replace the `@custom-variant` line with:
+
+```css
+@custom-variant dark (&:where(.dark, .dark *));
 ```
 
 ### Inertia page resolution
 
-The `HorizonDashboard` Inertia component is placed in `resources/js/vendor/horizon-ui/pages/` (done automatically by `horizon-ui:install`). Vite's `import.meta.glob` doesn't scan that path by default, so you need to add it to your resolve function in `app.ts` (or `app.js`):
+In `app.ts`, return the `HorizonDashboard` component when Inertia asks for it:
 
 ```ts
-// at the top of app.ts:
-// import type { DefineComponent } from 'vue';
+import { createInertiaApp } from '@inertiajs/vue3';
+import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
+import { HorizonDashboard } from '@negoziator/horizon-ui';
+import type { DefineComponent } from 'vue';
 
-resolve: async (name) => {
-    const vendorPages = import.meta.glob<DefineComponent>('./vendor/horizon-ui/pages/**/*.vue');
-    const vendorPath = `./vendor/horizon-ui/pages/${name}.vue`;
+createInertiaApp({
+    resolve: async (name) => {
+        if (name === 'HorizonDashboard') return HorizonDashboard;
 
-    if (vendorPath in vendorPages) {
-        return await resolvePageComponent(vendorPath, vendorPages);
-    }
-
-    return await resolvePageComponent(
-        `./pages/${name}.vue`,
-        import.meta.glob<DefineComponent>('./pages/**/*.vue'),
-    );
-},
+        return await resolvePageComponent(
+            `./pages/${name}.vue`,
+            import.meta.glob<DefineComponent>('./pages/**/*.vue'),
+        );
+    },
+    setup({ el, App, props, plugin }) {
+        createApp({ render: () => h(App, props) })
+            .use(plugin)
+            .mount(el);
+    },
+});
 ```
 
-> **Why not `??`?** `resolvePageComponent` throws when a component isn't found, so the `??` operator never gets to evaluate the fallback. The `in` check is required.
-
-After publishing (`vendor:publish --tag=horizon-ui-vue`), or after a package update where you want to pull in new component versions, re-run the publish command. Your edited copies are never overwritten without `--force`.
+That's it. Updating later is `composer update && npm update` — no `vendor:publish --force`, no extra `npm run build` steps.
 
 ## Configuration
 
@@ -139,13 +153,31 @@ Your implementation must satisfy the five methods defined in the contract: `stat
 
 ## Customising the Vue components
 
-Publish the Vue components to make frontend changes:
+Vue components are imported by name (`HorizonDashboard`, `BatchesList`, `HorizonControls`, `JobSearchBar`, `JobsList`, `QueueMetrics`). To customise, prefer composition — wrap the package components in your own page and pass through the props/slots you care about:
 
-```bash
-php artisan vendor:publish --tag=horizon-ui-vue
+```vue
+<script setup lang="ts">
+import { HorizonDashboard } from '@negoziator/horizon-ui';
+
+const props = defineProps<{
+    horizonStats: any;
+    queueMetrics: any;
+    recentJobs: any[];
+    supervisors: any[];
+    recentBatches: any[];
+    pollingInterval: number;
+    routes: Record<string, string>;
+}>();
+</script>
+
+<template>
+    <MyAppLayout>
+        <HorizonDashboard v-bind="props" />
+    </MyAppLayout>
+</template>
 ```
 
-This copies the five components to `resources/js/vendor/horizon-ui/`. Edit them freely — they will no longer be overwritten on package updates.
+For deeper changes, fork the relevant component into your project and import it instead of the package version. Avoid editing inside `node_modules` directly — those changes are wiped on `npm install`.
 
 ### Route URLs in components
 
@@ -212,6 +244,30 @@ php artisan horizon-ui:auto-pause
 composer install
 ./vendor/bin/pest
 ```
+
+## Migrating from v1.x
+
+v2.0 changes how the frontend is distributed.
+
+| | v1.x | v2.0 |
+|---|---|---|
+| Frontend distribution | `vendor:publish --tag=horizon-ui-vue` (copies `.vue` into `resources/js/vendor/horizon-ui/`) | `npm install @negoziator/horizon-ui` |
+| Updates | `composer update && vendor:publish --force && npm run build` | `composer update && npm update` |
+| Tailwind setup | Manual `@source '../js/vendor/horizon-ui/**/*.vue';` in `app.css` | One `@import "@negoziator/horizon-ui/styles.css";` |
+| Customisation | Edit published `.vue` files in your project | Composition / fork into your own component |
+
+### Migration steps
+
+1. `npm install @negoziator/horizon-ui`
+2. Replace your Inertia resolver block with the named-import version (see *Inertia page resolution* above).
+3. In `resources/css/app.css`:
+   - Remove `@source '../js/vendor/horizon-ui/**/*.vue';` (or any equivalent line auto-injected by the v1 installer).
+   - Add `@import "@negoziator/horizon-ui/styles.css";`.
+   - Add `@custom-variant dark (...)` if you don't already have one.
+4. Delete `resources/js/vendor/horizon-ui/` from your project.
+5. If you had forked any of the components, move the fork into your own `resources/js/components/` and import it there instead of the package's named export.
+
+The PHP API surface (controllers, gate, search service, config) is unchanged — only the frontend distribution differs.
 
 ## Contributing
 

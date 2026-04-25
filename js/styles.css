@@ -1,0 +1,11 @@
+/*
+ * Tailwind v4 source declarations for the Horizon UI components.
+ *
+ * Consumers import this file from their Tailwind entry point so the package's
+ * Vue templates are scanned for utility classes. @source paths are resolved
+ * relative to this file, so they keep working when the package is installed
+ * under node_modules/@negoziator/horizon-ui/.
+ */
+
+@source './components/**/*.vue';
+@source './pages/**/*.vue';

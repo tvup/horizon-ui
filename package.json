@@ -1,11 +1,33 @@
 {
     "name": "@negoziator/horizon-ui",
-    "version": "1.0.0",
-    "description": "Vue components for the horizon-ui Laravel package",
+    "version": "2.0.0-alpha.1",
+    "description": "Vue 3 components for the negoziator/horizon-ui Laravel package — a fully-featured Inertia-powered Horizon dashboard.",
+    "type": "module",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/negoziator/horizon-ui.git"
+    },
+    "main": "./js/index.ts",
+    "types": "./js/index.ts",
+    "exports": {
+        ".": "./js/index.ts",
+        "./styles.css": "./js/styles.css",
+        "./components/*": "./js/components/*",
+        "./pages/*": "./js/pages/*"
+    },
+    "files": [
+        "js/",
+        "README.md",
+        "LICENSE.md"
+    ],
+    "engines": {
+        "node": ">=18"
+    },
     "peerDependencies": {
         "@inertiajs/vue3": ">=1.0",
-        "reka-ui": ">=2.0",
         "lucide-vue-next": ">=0.400",
+        "reka-ui": ">=2.0",
         "vue": ">=3.3"
     }
 }

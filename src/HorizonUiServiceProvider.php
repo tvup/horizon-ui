@@ -23,10 +23,13 @@ class HorizonUiServiceProvider extends PackageServiceProvider
                 $command
                     ->publishConfigFile()
                     ->endWith(function ($cmd): void {
-                        $cmd->call('vendor:publish', ['--tag' => 'horizon-ui-vue']);
                         $cmd->newLine();
                         $cmd->info('Horizon UI installed. Dashboard: '.url(config('horizon-ui.path', 'horizon-ui')));
-                        $cmd->comment('Next: update your Inertia resolve function in app.ts — see the README for the snippet.');
+                        $cmd->newLine();
+                        $cmd->comment('Next: install the Vue components from npm:');
+                        $cmd->line('   npm install @negoziator/horizon-ui');
+                        $cmd->newLine();
+                        $cmd->comment('Then wire up the import + Tailwind source — see the README.');
                     });
             });
     }
@@ -38,10 +41,6 @@ class HorizonUiServiceProvider extends PackageServiceProvider
 
     public function packageBooted(): void
     {
-        $this->publishes([
-            __DIR__.'/../resources/js' => resource_path('js/vendor/horizon-ui'),
-        ], 'horizon-ui-vue');
-
         Gate::define('viewHorizonUi', fn ($user = null) => app()->environment('local'));
 
         if (config('horizon-ui.auto_pause.enabled')) {
