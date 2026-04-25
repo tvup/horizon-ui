@@ -153,7 +153,12 @@ Your implementation must satisfy the five methods defined in the contract: `stat
 
 ## Customising the Vue components
 
-Vue components are imported by name (`HorizonDashboard`, `BatchesList`, `HorizonControls`, `JobSearchBar`, `JobsList`, `QueueMetrics`). To customise, prefer composition — wrap the package components in your own page and pass through the props/slots you care about:
+Vue components are imported by name (`HorizonDashboard`, `BatchesList`, `HorizonControls`, `JobSearchBar`, `JobsList`, `QueueMetrics`). The recommended way to customise is composition — wrap the package components in your own page and use the named slots `HorizonDashboard` exposes:
+
+| Slot | Scope props | Default |
+|---|---|---|
+| `header` | `{ stats: HorizonStats }` | The gradient "Horizon Dashboard" hero panel |
+| `footer` | — | Empty |
 
 ```vue
 <script setup lang="ts">
@@ -172,12 +177,20 @@ const props = defineProps<{
 
 <template>
     <MyAppLayout>
-        <HorizonDashboard v-bind="props" />
+        <HorizonDashboard v-bind="props">
+            <template #header="{ stats }">
+                <MyCustomHeader :status="stats.status" />
+            </template>
+
+            <template #footer>
+                <p class="text-xs text-neutral-500">Powered by your team.</p>
+            </template>
+        </HorizonDashboard>
     </MyAppLayout>
 </template>
 ```
 
-For deeper changes, fork the relevant component into your project and import it instead of the package version. Avoid editing inside `node_modules` directly — those changes are wiped on `npm install`.
+For deeper changes, fork the relevant component into your own project and import the fork instead of the package's named export. Avoid editing inside `node_modules/` directly — those changes are wiped on `npm install`.
 
 ### Route URLs in components
 
@@ -244,6 +257,32 @@ php artisan horizon-ui:auto-pause
 composer install
 ./vendor/bin/pest
 ```
+
+## Building the npm package
+
+The Vue layer is built with Vite library mode. Source `.vue` and `.ts` files live under `js/`; `npm run build` produces `dist/horizon-ui.js` plus type declarations:
+
+```bash
+npm install
+npm run type-check
+npm run build
+```
+
+`dist/` is gitignored — only the built artefacts inside it ship to npm (along with `js/styles.css` and the source Vue files referenced by the CSS partial's `@source` directives, so consumer-side Tailwind v4 can scan them).
+
+## Release process
+
+A single git tag (`v2.0.0`, etc.) drives both releases:
+
+1. Bump the version in `composer.json` and `package.json` (must match the tag, minus the leading `v`).
+2. Update `CHANGELOG.md`.
+3. Tag and push: `git tag v2.0.0 && git push --tags`.
+4. The `Release` GitHub Action runs:
+   - Creates a GitHub Release from the changelog section.
+   - Type-checks, builds, and publishes the npm package with provenance, picking `latest` for stable tags and `next` for prereleases (`v2.0.0-alpha.1`).
+5. Packagist auto-publishes the Composer side via its GitHub App webhook — no extra workflow step.
+
+Required repo secret: `NPM_TOKEN` (a granular access token scoped to the `@negoziator/horizon-ui` package, write permission).
 
 ## Migrating from v1.x
 

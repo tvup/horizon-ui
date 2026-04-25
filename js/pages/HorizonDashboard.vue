@@ -76,23 +76,25 @@ usePoll(props.pollingInterval, {
     <div
         class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4"
     >
-        <!-- Header Section -->
-        <section
-            class="rounded-lg border border-sidebar-border/70 bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-800 p-6 text-white shadow-2xl dark:from-neutral-900 dark:via-black dark:to-neutral-950"
-        >
-            <p class="text-sm tracking-[0.35em] text-neutral-400 uppercase">
-                Queue Management
-            </p>
-            <div class="mt-3">
-                <h1 class="text-3xl font-semibold tracking-tight">
-                    Horizon Dashboard
-                </h1>
-                <p class="mt-2 max-w-2xl text-sm text-neutral-300">
-                    Monitor and control your queue workers, view job statistics,
-                    and manage Horizon in real-time.
+        <!-- Header Section (override via #header slot) -->
+        <slot name="header" :stats="horizonStats">
+            <section
+                class="rounded-lg border border-sidebar-border/70 bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-800 p-6 text-white shadow-2xl dark:from-neutral-900 dark:via-black dark:to-neutral-950"
+            >
+                <p class="text-sm tracking-[0.35em] text-neutral-400 uppercase">
+                    Queue Management
                 </p>
-            </div>
-        </section>
+                <div class="mt-3">
+                    <h1 class="text-3xl font-semibold tracking-tight">
+                        Horizon Dashboard
+                    </h1>
+                    <p class="mt-2 max-w-2xl text-sm text-neutral-300">
+                        Monitor and control your queue workers, view job statistics,
+                        and manage Horizon in real-time.
+                    </p>
+                </div>
+            </section>
+        </slot>
 
         <!-- Horizon panel -->
         <div
@@ -258,5 +260,8 @@ usePoll(props.pollingInterval, {
                 />
             </div>
         </div>
+
+        <!-- Optional footer slot for consumer-supplied content below the panel -->
+        <slot name="footer" />
     </div>
 </template>
